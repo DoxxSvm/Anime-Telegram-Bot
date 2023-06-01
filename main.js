@@ -202,7 +202,8 @@ bot.on('callback_query', async (query) => {
         console.error(error);
       });
 
-    bot.sendMessage(chatId, `${anime} is added to your watchlist.`);
+   createPreviousButton(chatId,anime)
+
   }
   else if (chosenAnime.endsWith('remove')) {
     const anime = chosenAnime.substring(0, chosenAnime.length - 6)
@@ -215,6 +216,18 @@ bot.on('callback_query', async (query) => {
     sendPreviousMsgs(msgList,chatId)
   }
 });
+
+function createPreviousButton(chatId,anime){
+  const movieButtons = [[{ text: `Watch previous episodes`, callback_data: animeMap.get(anime).concat('previous')}]];
+
+  const keyboard = {
+    inline_keyboard: movieButtons,
+  };
+
+  bot.sendMessage(chatId, `${anime} is added to your watchlist.`, {
+    reply_markup: keyboard,
+  });
+}
 
 function sendPreviousMsgs(msgList,chatId){
   for(let message of msgList){
