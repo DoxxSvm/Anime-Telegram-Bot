@@ -238,7 +238,7 @@ function sendPreviousMsgs(msgList,chatId){
 function sendMsg(message,chatId){
   if (message.text) {
     try {
-      bot.sendMessage(chatId, msg.text);
+      bot.sendMessage(chatId, message.text);
     } catch (error) {}
     
   }
