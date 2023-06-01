@@ -1,4 +1,5 @@
-const users = require('./User')
+const users = require('./models/User')
+const channels = require('./models/ChannelMessages')
 
 const addAnime = async (chatId,anime)=>{
     const user = await users.findOne({chatId:chatId})
@@ -69,4 +70,19 @@ const removeAnime =  async(anime,chatId)=>{
 
     }
 }
-module.exports = {addAnime,addUser,getChatList,getAnimeList, removeAnime}
+
+const getMessageList = async(channelUserName)=>{
+    try {
+        const channel = await channels.findOne({ channelUserName: channelUserName });
+        if(channel){
+            return channel.message
+        }
+        return []
+    } catch (error) {
+        console.error(error);
+    }
+    return []
+}
+
+
+module.exports = {addAnime,addUser,getChatList,getAnimeList, removeAnime, getMessageList}

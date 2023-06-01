@@ -1,10 +1,12 @@
 const TelegramBot = require('node-telegram-bot-api');
-const { addUser, getChatList, getAnimeList ,removeAnime} = require('./controllers')
+const { addUser, getChatList, getAnimeList ,removeAnime, getMessageList} = require('./controllers')
 require("dotenv").config()
 const token = process.env.TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 const mongoose = require('mongoose');
-const User = require('./User');
+const User = require('./models/User');
+const Channel = require('./models/ChannelMessages')
+const Message = require('./class/Message')
 
 
 const MONGO_URI = process.env.MONGO_URI
@@ -16,38 +18,52 @@ const animeMap = new Map([
   ["Skip and loafer", "400"],
   ['Hells paradise','355'],
   ['Oshi no Ko (My Star)','4433']
-
 ]);
+
+
 mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('Connected to MongoDB'))
   .catch((error) => console.error('Error connecting to MongoDB:', error));
 
-
+  
 bot.on('channel_post', async (msg) => {
   const channelName = msg.chat.username
+  console.log(msg)
   const list = await getChatList(channelName)
-  console.log(list)
-
-  for (let chatId of list) {
-
-    if (msg.text) {
-      bot.sendMessage(chatId, 'Channel message received: ' + msg.text);
-    }
-    if (msg.photo) {
-      const photo = msg.photo.pop();
-      bot.sendPhoto(chatId, photo.file_id);
-    }
-    if (msg.video) {
-      const video = msg.video;
-      bot.sendVideo(chatId, video.file_id);
-    }
+  const message = new Message()
+  if (msg.text) {
+    message.text = msg.text
+  }
+  else if (msg.photo) {
+    const photo = msg.photo.pop();
+    message.photo = photo.file_id
+    message.caption = msg.caption
+  }
+  else if (msg.video) {
+    const video = msg.video;
+    message.video = video.file_id
+    message.caption = msg.caption
 
   }
+
+  for (let chatId of list) {
+    sendMsg(message,chatId)
+  }
+
+  Channel.addMsg(channelName, message)
+      .then((channel) => {
+        console.log(`Added ${message} to msgList`);
+        console.log(channel)
+      })
+      .catch((error) => {
+        console.error(error);
+      });
 
 });
 
 bot.setMyCommands([
   { command: "start", description: "To get started" },
+  { command: "previous", description: "Watch previous episodes" },
   { command: "mylist", description: "See your anime list" },
   { command: "remove", description: "Remove anime" },
   { command: "add", description: "Add anime" },
@@ -78,6 +94,27 @@ bot.onText(/\/mylist/, async (msg) => {
       listMsg += "\n"
     }
     bot.sendMessage(chatId, `Your anime list \n${listMsg}`);
+
+  }
+})
+
+bot.onText(/\/previous/, async (msg) => {
+  const chatId = msg.chat.id;
+  const list = await getAnimeList(chatId) //list of channel Ids
+  if (list.length === 0) bot.sendMessage(chatId, 'You have not added any anime :(');
+  else {
+
+    const movieButtons = list.map((movie) => {
+      return [{ text: getKeyByValue(animeMap, movie), callback_data: movie.concat('previous') }];
+    });
+
+    const keyboard = {
+      inline_keyboard: movieButtons,
+    };
+
+    bot.sendMessage(chatId, 'Choose your Anime(s):', {
+      reply_markup: keyboard,
+    });
 
   }
 })
@@ -172,8 +209,49 @@ bot.on('callback_query', async (query) => {
     await removeAnime(anime,chatId)
     bot.sendMessage(chatId, `${getKeyByValue(animeMap,anime)} is removed from your watchlist.`);
   }
+  else if(chosenAnime.endsWith('previous')){
+    const channel = chosenAnime.substring(0, chosenAnime.length - 8)
+    const msgList = await getMessageList(channel)
+    sendPreviousMsgs(msgList,chatId)
+  }
 });
 
+function sendPreviousMsgs(msgList,chatId){
+  for(let message of msgList){
+    sendMsg(message,chatId)
+  }
+}
+
+function sendMsg(message,chatId){
+  if (message.text) {
+    try {
+      bot.sendMessage(chatId, msg.text);
+    } catch (error) {}
+    
+  }
+  if (message.photo) {
+    const caption = message.caption?message.caption:""
+    try{
+    bot.sendPhoto(
+      chatId,
+      message.photo,
+      {caption:caption}
+    );}
+    catch (error) {}
+    
+  }
+  if (message.video) {
+    const caption = message.caption?message.caption:""
+    try{
+    bot.sendVideo(
+      chatId,
+      message.video,
+      {caption:caption}
+    );}
+    catch (error) {}
+
+  }
+}
 
 function getKeyByValue(map, searchValue) {
 
@@ -189,59 +267,5 @@ function getKeyByValue(map, searchValue) {
 
 
 
-
-
-// bot.onText(/\/last10messages/, (msg) => {
-//   const chatId = msg.chat.id;
-
-//   // Get the last 10 messages from the channel
-//   bot.getChatHistory(-1001612839963,0,0,10,false)
-//     .then((messages) => {
-//       // Send the messages to the user
-//       console.log(messages)
-//       bot.sendMessage(chatId, 'Last 10 messages:');
-//       messages.forEach((message) => {
-//         if (message.text) {
-//           bot.sendMessage(chatId, 'Channel message received: ' + message.text);
-//         }
-//         if (message.photo) {
-//           const photo = message.photo.pop();
-//           bot.sendPhoto(chatId, photo.file_id);
-//         }
-//         if (message.video) {
-//           const video = message.video;
-//           bot.sendVideo(chatId, video.file_id);
-//         }
-//       });
-//     })
-//     .catch((error) => {
-//       console.log(error);
-//       bot.sendMessage(chatId, 'An error occurred while fetching the messages.');
-//     });
-// });
-
-// bot.onText(/\/last10messages/, (msg) => {
-//   const chatId = msg.chat.id;
-
-//   // Get the latest update ID
-//   const latestUpdateId = msg.update_id;
-
-//   // Fetch the last 10 messages from the channel
-//   bot.getUpdates({ offset: latestUpdateId, limit: 10 })
-//     .then((updates) => {
-//       const messages = updates.map((update) => update.message);
-//       // Filter out messages not from the specified channel
-//       const channelMessages = messages.filter((message) => message.chat.username === 'dr_stonee_new_world');
-//       // Send the messages to the user
-//       bot.sendMessage(chatId, 'Last 10 messages:');
-//       channelMessages.forEach((message) => {
-//         bot.sendMessage(chatId, message.text);
-//       });
-//     })
-//     .catch((error) => {
-//       console.log(error);
-//       bot.sendMessage(chatId, 'An error occurred while fetching the messages.');
-//     });
-// });
 
 
