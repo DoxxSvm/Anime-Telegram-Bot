@@ -26,7 +26,6 @@ channelSchema.statics.addMsg = async function (_channelUserName, msg) {
           channelUserName:_channelUserName,
           message:[msg]
         })
-        console.log(channel)
         return channel
       }
     } catch (error) {

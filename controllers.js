@@ -80,6 +80,7 @@ const getMessageList = async(channelUserName)=>{
         return []
     } catch (error) {
         console.error(error);
+
     }
     return []
 }
