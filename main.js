@@ -196,8 +196,9 @@ bot.onText(/\/start/, async (msg) => {
   const payload = msg.text.substring(7);
   await addUser(chatId)
   joinMainChannel(msg,msg.from.id, chatId, payload)
-  if (payload.length > 0) {
-    addAnime(chatId, payload.substring(0,payload.length-6))
+  if (payload.length >0) {
+    const anime = payload.length == 20?payload.substring(0,payload.length-6):payload
+    addAnime(chatId, anime)
   }
   else{
     firstTimeMsg(chatId,msg)
@@ -435,8 +436,17 @@ const joinMainChannel = async (msg,userId, chatId, payload) => {
       });
       return
     }
-    else {if(payload.length == 0) return}
-    sendDataFromPayload(msg,chatId, payload)
+    else {
+      if(payload.length == 0) return
+      if(payload.length == 14){
+        const msgList = await getMessageList(payload)
+        sendPreviousMsgs(msgList, chatId)
+        return
+      }
+      sendDataFromPayload(msg,chatId, payload)
+    }
+
+    
     
 
   }
