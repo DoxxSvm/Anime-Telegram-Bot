@@ -9,6 +9,8 @@ const channelSchema = mongoose.Schema({
       text: String,
       photo: String,
       video: String,
+      file:String,
+      thumbnail:String,
       caption: String
     }]
     

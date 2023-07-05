@@ -62,7 +62,6 @@ mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 
 bot.on('channel_post', async (msg) => {
   const channelID = msg.chat.id
-  console.log(msg.chat.title,msg.chat.id)
   const list = await getChatList(channelID)
   const message = new Message()
   if (msg.text) {
@@ -79,15 +78,19 @@ bot.on('channel_post', async (msg) => {
     message.caption = msg.caption
 
   }
+  else if(msg.document){
+    message.file = msg.document.file_id
+    message.caption = msg.caption
+  }
 
   for (let chatId of list) {
     sendMsg(message, chatId)
   }
 
+
   Channel.addMsg(channelID, message)
     .then((channel) => {
-      console.log(`Added ${message} to msgList`);
-      console.log(channel)
+      
     })
     .catch((error) => {
       console.error(error);
@@ -138,17 +141,11 @@ bot.onText(/\/previous/, async (msg) => {
   if (list.length === 0) bot.sendMessage(chatId, 'You have not added any anime :(');
   else {
 
-    const movieButtons = list.map((movie) => {
-      return [{ text: getKeyByValue(animeMap, movie), callback_data: movie.concat('previous') }];
+    const button = list.map((movie) => {
+      return [{ text: getKeyByValue(animeMap, movie).concat(` \u{21A9}`) }];
     });
 
-    const keyboard = {
-      inline_keyboard: movieButtons,
-    };
-
-    bot.sendMessage(chatId, 'Choose your Anime(s):', {
-      reply_markup: keyboard,
-    });
+    sendMessageWithButtons(chatId, 'Choose your Anime(s):', button);
 
   }
 })
@@ -160,16 +157,10 @@ bot.onText(/\/remove/, async (msg) => {
   else {
 
     const movieButtons = list.map((movie) => {
-      return [{ text: getKeyByValue(animeMap, movie), callback_data: movie.concat('remove') }];
+      return [{ text: getKeyByValue(animeMap, movie).concat(` \u{2796}`)}];
     });
 
-    const keyboard = {
-      inline_keyboard: movieButtons,
-    };
-
-    bot.sendMessage(chatId, 'Choose your Anime(s):', {
-      reply_markup: keyboard,
-    });
+    sendMessageWithButtons(chatId, 'Choose your Anime(s):', movieButtons);
 
   }
 })
@@ -182,16 +173,10 @@ bot.onText(/\/add/, async (msg) => {
   const notAdded = animes.filter((element) => !list.includes(animeMap.get(element))); //list of anime name
 
   const movieButtons = notAdded.map((movie) => {
-    return [{ text: movie, callback_data: movie.concat('add') }];
+    return [{ text: movie.concat(` \u{2795}`) }];
   });
 
-  const keyboard = {
-    inline_keyboard: movieButtons,
-  };
-
-  bot.sendMessage(chatId, 'Choose your Anime(s) to add:', {
-    reply_markup: keyboard,
-  });
+  sendMessageWithButtons(chatId, 'Choose your Anime(s) to add:', movieButtons);
 });
 
 
@@ -212,15 +197,51 @@ bot.onText(/\/start/, async (msg) => {
   await addUser(chatId)
   joinMainChannel(msg,msg.from.id, chatId, payload)
   if (payload.length > 0) {
-    addAnime(chatId, payload.substring(0,payload.length-3))
+    addAnime(chatId, payload.substring(0,payload.length-6))
   }
   else{
     firstTimeMsg(chatId,msg)
   }
-  
-
 
 });
+
+bot.on('message', async (msg) => {
+  const chatId = msg.chat.id;
+  const data = msg.text;
+
+  if (data.endsWith(` \u{2795}`)) { //add
+    const anime = data.substring(0, data.length - 2)
+    addAnime(chatId, animeMap.get(anime))
+    createPreviousButton(chatId, anime)
+
+  }
+  else if (data.endsWith(` \u{2795}`)) { //remove
+    const anime = data.substring(0, data.length - 2)
+    await removeAnime(animeMap.get(anime), chatId)
+    bot.sendMessage(chatId, `${anime} is removed from your watchlist.`);
+  }
+  else if (data.endsWith(` \u{21A9}`)) { //prev
+    const channel = data.substring(0, data.length - 2)
+    const msgList = await getMessageList(animeMap.get(channel))
+    sendPreviousMsgs(msgList, chatId)
+  }
+
+
+  
+});
+
+const sendMessageWithButtons=(chatId,message,buttons)=>{
+  const keyboard = {
+    keyboard: buttons,
+    one_time_keyboard: true,
+    resize_keyboard: true
+  };
+
+  // Send the quality selection buttons in the keyboard
+  return bot.sendMessage(chatId, message, {
+    reply_markup: keyboard
+  });
+}
 
 
 bot.on('polling_error', (error) => {
@@ -303,6 +324,19 @@ function sendMsg(message, chatId) {
     catch (error) { }
 
   }
+  if (message.file) {
+    const caption = message.caption ? message.caption : ""
+    const file = message.file
+    try {
+      bot.sendDocument(
+        chatId,
+        file,
+        { caption: caption }
+      );
+    }
+    catch (error) { }
+
+  }
 }
 
 function getKeyByValue(map, searchValue) {
@@ -318,8 +352,7 @@ function getKeyByValue(map, searchValue) {
 function addAnime(chatId, anime) {
   User.addAnime(chatId, anime)
     .then((user) => {
-      console.log(`Added ${anime} to animeList for chatId ${chatId}`);
-      console.log('Updated user:', user);
+      
     })
     .catch((error) => {
       console.error(error);
@@ -328,12 +361,16 @@ function addAnime(chatId, anime) {
 
 const sendDataFromPayload = async (msg,chatId, payload) => {
   payload = payload.toString()
-  const episode  = payload.substring(payload.length-3,payload.length)
-  payload = payload.substring(0,payload.length-3)
+
+  const quality  = payload.substring(payload.length-3,payload.length)
+  const episode  = payload.substring(payload.length-6,payload.length-3)
+
+  payload = payload.substring(0,payload.length-6)
+
   const msgList = await getMessageList(payload)
   if (msgList.length === 0) return
   for (let i = msgList.length-1; i >= 0; i--) {
-    if (msgList[i].video && msgList[i].caption && msgList[i].caption.includes(episode)) {
+    if (msgList[i].video && msgList[i].caption && msgList[i].caption.includes(episode) && msgList[i].caption.includes(quality)) {
       const message = msgList[i]
       const caption = message.caption ? message.caption : ""
       try {
@@ -349,24 +386,32 @@ const sendDataFromPayload = async (msg,chatId, payload) => {
       catch (error) { }
 
     }
+
+    if (msgList[i].file && msgList[i].caption.includes(episode) && msgList[i].caption.includes(quality)) {
+      const message = msgList[i]
+      const caption = message.caption ? message.caption : ""
+      try {
+        bot.sendDocument(chatId, message.file).then(()=>{
+          const movieButtons = [[{ text: "Watch Previous", callback_data: payload.concat('previous') }]];
+          const keyboard = {inline_keyboard: movieButtons,};
+          return bot.sendMessage(chatId, "Want to watch previous episodes?", {reply_markup: keyboard,});
+        }).then(()=>{
+          firstTimeMsg(chatId,msg)
+        })
+        return
+      }
+      catch (error) { }
+    }
   }
 }
 
 const firstTimeMsg = async (chatId, msg) => {
   bot.sendMessage(chatId, `Hi ${msg.from.first_name}! \nWelcome to AnimeNetwork! Your personalized anime bot.`).then(()=>{
-    const movieButtons = animes.map((movie) => {
-      return [{ text: movie, callback_data: movie.concat('add') }];
+    const buttons = animes.map((movie) => {
+      return [{ text: movie.concat(` \u{2795}`) }];
     });
   
-    const keyboard = {
-      inline_keyboard: movieButtons,
-    };
-  
-    bot.sendMessage(chatId, 'Choose your Anime(s):', {
-      reply_markup: keyboard,
-    }).then(()=>{
-      bot.sendMessage(chatId, `Please select Animes (listed above \u{2B06}\u{2B06}) that you want to Subscribe.`)
-    });
+    sendMessageWithButtons(chatId, 'Choose your Anime(s):',buttons )
   })
 
   
@@ -374,6 +419,7 @@ const firstTimeMsg = async (chatId, msg) => {
 
 const joinMainChannel = async (msg,userId, chatId, payload) => {
   try {
+
     const a = await bot.getChatMember("@AnimeNet_work", userId)
     if (a.status === 'left') {
       const movieButtons = [[{ text: "Join Channel", url: "https://t.me/AnimeNet_work" }],
@@ -395,7 +441,7 @@ const joinMainChannel = async (msg,userId, chatId, payload) => {
 
   }
   catch (e) {
-
+    console.log(e.message)
   }
 
 }
