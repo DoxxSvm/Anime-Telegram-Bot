@@ -392,7 +392,7 @@ const sendDataFromPayload = async (msg,chatId, payload) => {
       const message = msgList[i]
       const caption = message.caption ? message.caption : ""
       try {
-        bot.sendDocument(chatId, message.file).then(()=>{
+        bot.sendDocument(chatId, message.file,{ caption: caption }).then(()=>{
           const movieButtons = [[{ text: "Watch Previous", callback_data: payload.concat('previous') }]];
           const keyboard = {inline_keyboard: movieButtons,};
           return bot.sendMessage(chatId, "Want to watch previous episodes?", {reply_markup: keyboard,});
