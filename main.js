@@ -234,7 +234,7 @@ bot.on('message', async (msg) => {
 const sendMessageWithButtons=(chatId,message,buttons)=>{
   const keyboard = {
     keyboard: buttons,
-    one_time_keyboard: true,
+    one_time_keyboard: false,
     resize_keyboard: true
   };
 
