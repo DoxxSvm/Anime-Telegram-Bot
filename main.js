@@ -17,15 +17,15 @@ const animeMap = new Map([
   ['Sweet Reincarnation', '-1001920350753'],
   ['The Dreaming Boy is a Realist', '-1001965701172'],
   ['The Girl I Like Forgot Her Glasses', '-1001955807339'],
-  ['Monogatari 2nd Season', '-1001606905335'],
+  ['Mononogatari 2nd Season', '-1001606905335'],
   ['Reborn as a Vending Machine, Now I Wander the Dungeon', '-1001712616115'],
   ['My Happy Marriage', '-1001986970999'],
   ['Helck', '-1001988206798'],
   ['Bungou Stray Dogs 5th Season', '-1001943256847'],
-  ['Spy Kyoushitsu', '-1001809331617'],
+  ['Spy Classroom Season 2', '-1001809331617'],
   ['The Devil is a Part-Timer! Season 2', '-1001987611044'],
   ['Saint Cecilia and Pastor Lawrence', '-1001877542952'],
-  ['Jujutsu Kaisen', '-1001850954523'],
+  ['Jujutsu Kaisen Season 2', '-1001850954523'],
   ['Undead Girl Murder Farce', '-1001856952090'],
   ['The Great Cleric', '-1001682090037'],
   ['Sugar Apple Fairy Tale Part 2', '-1001687408382'],
@@ -33,7 +33,7 @@ const animeMap = new Map([
   ['The Masterful Cat Is Depressed Again Today', '-1001893126165'],
   ['The Gene of AI', '-1001932580615'],
   ['The Seven Deadly Sins: Grudge of Edinburgh Part 2', '-1001895296884'],
-  ['Bleach: Thousand-Year Blood Ear - The separation', '-1001915337363'],
+  ['Bleach Thousand-Year Blood Ear - The separation Part 2', '-1001915337363'],
   ['Horimiya: The Missing Pieces', '-1001897637040'],
   ['Liar Liar', '-1001688635520'],
   ['Masamune-kuns Revenge R', '-1001639616992'],
@@ -48,6 +48,7 @@ const animeMap = new Map([
   ['The Most Heretical Last Boss Queen: From Villainess to Savior', '-1001913268286'],
   ['The Duke of Death and His Maid Season 2', '-1001635582767'],
   ['Classroom for Heroes', '-1001888162080'],
+  ['One Piece','-1001922349630']
 
 ]);
 
@@ -62,6 +63,7 @@ mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 
 bot.on('channel_post', async (msg) => {
   const channelID = msg.chat.id
+  console.log(channelID)
   const list = await getChatList(channelID)
   const message = new Message()
   if (msg.text) {
@@ -101,11 +103,11 @@ bot.on('channel_post', async (msg) => {
 bot.setMyCommands([
   { command: "start", description: "To get started" },
   { command: "previous", description: "Watch previous episodes" },
-  { command: "mylist", description: "See your anime list" },
-  { command: "remove", description: "Remove anime" },
-  { command: "add", description: "Add anime" },
-  { command: "donate", description: "Buy me a Coffee" },
-  { command: "help", description: "help me out" },
+  { command: "mylist", description: "See your anime watchlist" },
+  { command: "remove", description: "Remove anime from your watchlist" },
+  { command: "add", description: "Add anime o your watchlist" },
+  { command: "donate", description: "Support our work and help us grow!" },
+  { command: "help", description: "Need help or have a query? Contact Us" },
 ]);
 
 bot.onText(/\/help/, (msg) => {
@@ -115,7 +117,7 @@ bot.onText(/\/help/, (msg) => {
 
 bot.onText(/\/donate/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, 'Your support is greatly appreciated. We are grateful for your donation. \n\n Upi ID: thenotosvm@okhdfcbank');
+  bot.sendMessage(chatId, 'Your support is greatly appreciated. We are grateful for your donation.\n\nUPI - thenotosvm@okhdfcbank');
 })
 
 
@@ -145,7 +147,7 @@ bot.onText(/\/previous/, async (msg) => {
       return [{ text: getKeyByValue(animeMap, movie).concat(` \u{21A9}`) }];
     });
 
-    sendMessageWithButtons(chatId, 'Choose your Anime(s):', button);
+    sendMessageWithButtons(chatId, 'Select the anime from the list below to view all available episodes:', button);
 
   }
 })
@@ -160,7 +162,7 @@ bot.onText(/\/remove/, async (msg) => {
       return [{ text: getKeyByValue(animeMap, movie).concat(` \u{2796}`)}];
     });
 
-    sendMessageWithButtons(chatId, 'Choose your Anime(s):', movieButtons);
+    sendMessageWithButtons(chatId, 'Select the anime you wish to remove from your watchlist:', movieButtons);
 
   }
 })
@@ -176,7 +178,7 @@ bot.onText(/\/add/, async (msg) => {
     return [{ text: movie.concat(` \u{2795}`) }];
   });
 
-  sendMessageWithButtons(chatId, 'Choose your Anime(s) to add:', movieButtons);
+  sendMessageWithButtons(chatId, 'Select the anime you wish to add to your watchlist:', movieButtons);
 });
 
 
@@ -397,7 +399,10 @@ const sendDataFromPayload = async (msg,chatId, payload) => {
           const keyboard = {inline_keyboard: movieButtons,};
           return bot.sendMessage(chatId, "Want to watch previous episodes?", {reply_markup: keyboard,});
         }).then(()=>{
-          firstTimeMsg(chatId,msg)
+          sleep(5000).then(()=>{
+            firstTimeMsg(chatId,msg)
+          })
+          
         })
         return
       }
@@ -406,8 +411,13 @@ const sendDataFromPayload = async (msg,chatId, payload) => {
   }
 }
 
+function sleep (time) {
+  return new Promise((resolve) => setTimeout(resolve, time));
+}
+
 const firstTimeMsg = async (chatId, msg) => {
-  bot.sendMessage(chatId, `Hi ${msg.from.first_name}! \nWelcome to AnimeNetwork! Your personalized anime bot.`).then(()=>{
+  bot.sendMessage(chatId, `Hi ${msg.from.first_name}!!\nWelcome to AnimeNetwork! Your own personalized Anime bot. Add Anime to your watchlist by selecting from the list below:
+  `).then(()=>{
     const buttons = animes.map((movie) => {
       return [{ text: movie.concat(` \u{2795}`) }];
     });
