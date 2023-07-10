@@ -218,7 +218,7 @@ bot.on('message', async (msg) => {
     createPreviousButton(chatId, anime)
 
   }
-  else if (data.endsWith(` \u{2795}`)) { //remove
+  else if (data.endsWith(` \u{2796}`)) { //remove
     const anime = data.substring(0, data.length - 2)
     await removeAnime(animeMap.get(anime), chatId)
     bot.sendMessage(chatId, `${anime} is removed from your watchlist.`);
